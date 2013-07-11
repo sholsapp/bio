@@ -5,10 +5,47 @@ class Moves(object):
   UP = 'U'
   DIAGONAL = 'D'
   LEFT = 'L'
+  NONE = ''
+  ORIGIN = '*'
+
+
+class Alignment(object):
+  """Encapsulates an alignment between two sequences."""
+
+  def __init__(self, a, b, cost):
+    self.a = a[::-1]
+    self.b = b[::-1]
+    self.cost = cost
+    self.matches = 0
+    self.mismatches = 0
+    self.a_gaps = 0
+    self.b_gaps = 0
+    # Populate the analytics declared above
+    self._analyze()
+
+  def __repr__(self):
+    return "Alignment(cost=%r, matches=%r, mismatches=%r, a_gaps=%r, b_gaps=%r)" % (self.cost, self.matches, self.mismatches, self.a_gaps, self.b_gaps)
+
+  def _analyze(self):
+    for i in range(0, len(self.a)):
+      if self.a[i] == self.b[i]:
+        self.matches += 1
+      elif self.a[i] == '-':
+        self.a_gaps += 1
+      elif self.b[i] == '-':
+        self.b_gaps += 1
+      else:
+        self.mismatches += 1
+
+  def make_cigar(self):
+    bar = ''
+    for i in range(0, len(self.a)):
+      bar += '|' if self.a[i] == self.b[i] else ' '
+    return '\n'.join([self.a, bar, self.b])
 
 
 class Element(object):
-  def __init__(self, x, y, value=None, traceback=''):
+  def __init__(self, x, y, value=None, traceback=Moves.NONE):
     self.x = x
     self.y = y
     self.value = value
@@ -19,11 +56,20 @@ class Element(object):
     self.right = self.x + 1, self.y
     self.diag = self.x - 1, self.y - 1
   def __repr__(self):
-    #return "Element(%r, %r, %r, %r)" % (self.x, self.y, self.value, self.traceback)
-    return "(%r %r)" % (self.value, self.traceback)
+    return "Element(%r, %r, %r, %r)" % (self.x, self.y, self.value, self.traceback)
 
 
 class AlignmentMatrix(object):
+  """A base alignment matrix.
+
+    This class encapsulates common functionality between global and local
+    alignment algorithms.
+
+    :param a: The first input sequence.
+    :param b: The second input sequence.
+    :param cost: The class that provides costs... still under development.
+
+  """
   def __init__(self, a, b, cost):
     self._matrix = []
     self.a = a
@@ -33,24 +79,19 @@ class AlignmentMatrix(object):
       self._matrix.append([])
       for x in range(0, len(b) + 1):
         self._matrix[y].append(Element(x, y))
+    self.alignments = []
+    self._initialize()
+    self._calculate_subsolutions()
+    self._calculate_optimals()
 
-  def execute(self):
-    for y in range(1, len(self.a) + 1):
-      for x in range(1, len(self.b) + 1):
-        element = self.get((x, y))
-        diag_cost = self.get(element.diag).value + (
-          self.cost.match if self.a[y - 1] == self.b[x - 1] else self.cost.mismatch
-        )
-        left_cost = self.get(element.left).value + self.cost.gap
-        up_cost = self.get(element.up).value + self.cost.gap
-        choices = [diag_cost, left_cost, up_cost]
-        if diag_cost == max(choices):
-          self.get((x, y)).traceback += Moves.DIAGONAL
-        if left_cost == max(choices):
-          self.get((x, y)).traceback += Moves.LEFT
-        if up_cost == max(choices):
-          self.get((x, y)).traceback += Moves.UP
-        element.value = max(choices)
+  def _initialize(self):
+    pass
+
+  def _calculate_subsolutions(self):
+    pass
+
+  def _calculate_optimals(self):
+    pass
 
   def _trace(self, element):
     for move in element.traceback:
@@ -69,22 +110,12 @@ class AlignmentMatrix(object):
         align_b = '-'
         for others_a, others_b in self._trace(self.get(element.up)):
           yield (align_a + others_a, align_b + others_b)
-    if not element.traceback or element.traceback == '*':
-      yield '', ''
+    if not element.traceback or element.traceback == Moves.ORIGIN:
+      yield Moves.NONE, Moves.NONE
 
-  def make_cigar(self, this_a, this_b):
-    bar = ''
-    for i in range(0, len(this_a)):
-      bar += '|' if this_a[i] == this_b[i] else ' '
-    return '\n'.join([this_a, bar, this_b])
-
-  def print_traces(self):
-    idx = 1
-    for aa, bb in self._trace(self.get((len(self.b), len(self.a)))):
-      print 'Match %s (cost of %s):' % (idx, self._matrix[len(self.a)][len(self.b)].value)
-      print self.make_cigar(aa[::-1], bb[::-1])
-      print
-      idx += 1
+  def _calculate_optimals_at_cord(self, cord):
+    for a_alignment, b_alignment in self._trace(self.get(cord)):
+      self.alignments.append(Alignment(a_alignment, b_alignment, self.get(cord).value))
 
   def get(self, cord):
     """Get an element at an (x, y) cordinate.
@@ -100,9 +131,9 @@ class AlignmentMatrix(object):
 
 class GlobalMatrix(AlignmentMatrix):
 
-  def initialize(self):
+  def _initialize(self):
     self.get((0, 0)).value = 0
-    self.get((0, 0)).traceback = '*'
+    self.get((0, 0)).traceback = Moves.ORIGIN
     element = self.get((1, 0))
     while element is not None:
       element.value = self.cost.gap * element.x
@@ -114,7 +145,7 @@ class GlobalMatrix(AlignmentMatrix):
       element.traceback = Moves.UP
       element = self.get(element.down)
 
-  def execute(self):
+  def _calculate_subsolutions(self):
     for y in range(1, len(self.a) + 1):
       for x in range(1, len(self.b) + 1):
         element = self.get((x, y))
@@ -132,36 +163,31 @@ class GlobalMatrix(AlignmentMatrix):
           self.get((x, y)).traceback += Moves.UP
         element.value = max(choices)
 
-  def print_traces(self):
-    idx = 1
-    for aa, bb in self._trace(self.get((len(self.b), len(self.a)))):
-      print 'Match %s (cost of %s):' % (idx, self._matrix[len(self.a)][len(self.b)].value)
-      print self.make_cigar(aa[::-1], bb[::-1])
-      print
-      idx += 1
+  def _calculate_optimals(self):
+    self._calculate_optimals_at_cord((len(self.b), len(self.a)))
 
 
 class LocalMatrix(AlignmentMatrix):
   def __init__(self, a, b, cost):
-    AlignmentMatrix.__init__(self, a, b, cost)
     self.max_value = 0
     self.max_cord = (0, 0)
+    AlignmentMatrix.__init__(self, a, b, cost)
 
-  def initialize(self):
+  def _initialize(self):
     self.get((0, 0)).value = 0
-    self.get((0, 0)).traceback = '*'
+    self.get((0, 0)).traceback = Moves.ORIGIN
     element = self.get((1, 0))
     while element is not None:
       element.value = 0
-      element.traceback = ''
+      element.traceback = Moves.NONE
       element = self.get(element.right)
     element = self.get((0, 1))
     while element is not None:
       element.value = 0
-      element.traceback = ''
+      element.traceback = Moves.NONE
       element = self.get(element.down)
 
-  def execute(self):
+  def _calculate_subsolutions(self):
     for y in range(1, len(self.a) + 1):
       for x in range(1, len(self.b) + 1):
         element = self.get((x, y))
@@ -182,10 +208,5 @@ class LocalMatrix(AlignmentMatrix):
           self.max_value = element.value
           self.max_cord = (x, y)
 
-  def print_traces(self):
-    idx = 1
-    for aa, bb in self._trace(self.get(self.max_cord)):
-      print 'Match %s (cost of %s):' % (idx, self._matrix[self.max_cord[1]][self.max_cord[0]].value)
-      print self.make_cigar(aa[::-1], bb[::-1])
-      print
-      idx += 1
+  def _calculate_optimals(self):
+    self._calculate_optimals_at_cord(self.max_cord)
