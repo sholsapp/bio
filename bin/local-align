@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+
+from bio import Cost, random_gene
+from bio.alignments import LocalMatrix
+
+
+def main():
+  gene1 = random_gene()
+  gene2 = random_gene()
+  print gene1, gene2
+  l = LocalMatrix(gene1, gene2, Cost)
+  l.initialize()
+  l.execute()
+  l.print_traces()
+
+if __name__ == '__main__':
+  main()

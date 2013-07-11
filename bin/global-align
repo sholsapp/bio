@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+
+from bio import Cost, random_gene
+from bio.alignments import GlobalMatrix
+
+
+def main():
+  gene1 = random_gene()
+  gene2 = random_gene()
+  print gene1, gene2
+  g = GlobalMatrix(gene1, gene2, Cost)
+  g.initialize()
+  g.execute()
+  g.print_traces()
+
+if __name__ == '__main__':
+  main()
