@@ -1,5 +1,7 @@
-bio
-===
+# bio
+
+<img src='https://secure.travis-ci.org/sholsapp/bio.png?branch=master'></a>
+
 
 The `bio` is a module that provides global and local alignment algorithms
 for aligning character sequences and strings using algorithms usually used in
