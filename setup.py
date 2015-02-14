@@ -18,5 +18,11 @@ setup(
   test_requires=[
     'pytest',
   ],
+  entry_points = {
+    'console_scripts': [
+      'global-align = bio.bin.global:main',
+      'local-align = bio.bin.local:main',
+    ],
+  },
   packages=['bio'],
 )
