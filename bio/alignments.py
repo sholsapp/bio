@@ -9,6 +9,17 @@ class Moves(object):
   ORIGIN = '*'
 
 
+class bcolors:
+  HEADER = '\033[95m'
+  BLUE = '\033[94m'
+  GREEN = '\033[92m'
+  YELLOW = '\033[93m'
+  RED = '\033[91m'
+  ENDC = '\033[0m'
+  BOLD = '\033[1m'
+  UNDERLINE = '\033[4m'
+
+
 class Alignment(object):
   """Encapsulates an alignment between two sequences."""
 
@@ -38,10 +49,19 @@ class Alignment(object):
         self.mismatches += 1
 
   def make_cigar(self):
+    a_bar = ''
+    b_bar = ''
     bar = ''
     for i in range(0, len(self.a)):
-      bar += '|' if self.a[i] == self.b[i] else ' '
-    return '\n'.join([self.a, bar, self.b])
+      color = ''
+      if self.a[i] == self.b[i]:
+        color = bcolors.GREEN
+      elif ('-' not in [self.a[i], self.b[i]]) and self.a[i] != self.b[i]:
+        color = bcolors.RED
+      a_bar += '{color}{char}{end}'.format(color=color, char=self.a[i], end=bcolors.ENDC)
+      bar += '|'.format(color=color, end=bcolors.ENDC) if self.a[i] == self.b[i] else ' '
+      b_bar += '{color}{char}{end}'.format(color=color, char=self.b[i], end=bcolors.ENDC)
+    return '\n'.join([a_bar, bar, b_bar])
 
 
 class Element(object):
