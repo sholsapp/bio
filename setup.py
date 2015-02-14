@@ -15,5 +15,8 @@ setup(
   author='Stephen Holsapple',
   author_email='sholsapp@gmail.com',
   url='http://www.google.com',
+  test_requires=[
+    'pytest',
+  ],
   packages=['bio'],
 )
