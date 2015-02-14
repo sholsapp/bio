@@ -1,12 +1,20 @@
 #!/usr/bin/env python
 
+import argparse
+
 from bio import AffineGapCost, FixedCost, random_gene
 from bio.alignments import LocalMatrix
 
 
 def main():
-  gene1 = random_gene()
-  gene2 = random_gene()
+
+  parser = argparse.ArgumentParser(description=__doc__)
+  parser.add_argument('--gene1', required=False, default=random_gene())
+  parser.add_argument('--gene2', required=False, default=random_gene())
+  args = parser.parse_args()
+
+  gene1 = args.gene1
+  gene2 = args.gene2
 
   print gene1, gene2
 
