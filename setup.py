@@ -2,7 +2,7 @@
 
 import os
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 README = None
 with open(os.path.abspath('README.md')) as fh:
@@ -27,5 +27,5 @@ setup(
       'local-align = bio.bin.local:main',
     ],
   },
-  packages=['bio'],
+  packages=find_packages(),
 )
